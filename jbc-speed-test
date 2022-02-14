@@ -1,0 +1,191 @@
+#!/usr/bin/php
+<?php
+
+// Include settings file.
+require(__DIR__  . '/settings.php');
+if (empty($test_server_url)) {
+  die("Settings file missing.\n");
+}
+
+$quiet = FALSE;
+$csv = TRUE;
+$args = $argv;
+unset($args[0]);
+
+if (has_arg($args, 'out')) {
+  $directions = [];
+  if (has_arg($args, 'up')) {
+    $directions[] = 'up';
+  }
+  if (has_arg($args, 'down')) {
+    $directions[] = 'down';
+  }
+  if (!$directions) {
+    $directions = ['up', 'down'];
+  }
+  show_graphs($csv_path, $directions);
+  die();
+}
+
+if (has_arg($args, '-q')) {
+  $quiet = TRUE;
+}
+
+if (has_arg($args, 'nocsv')) {
+  $csv = FALSE;
+}
+
+$direction = 'down';
+if (has_arg($args, 'up')) {
+  $direction = 'up';
+}
+
+$args = array_values($args);
+
+$size = $args[0] ?? NULL;
+switch ($size) {
+  case 1:
+  case 5:
+  case 10:
+  case 50:
+  case 100:
+    // Size is OK.
+    break;
+  default:
+    $size = ($direction == 'up') ? 1 : 10;
+}
+
+if ($direction == 'down') {
+  $direction_text = 'Download';
+  $command = 'curl -s -o /tmp/dl-file ' . $test_server_url . '/' . $size . 'mb.dat ; rm /tmp/dl-file';
+  if (!$quiet) {
+    printf("Dowloading %s MB...\n", $size);
+  }
+}
+else {
+  $direction_text = 'Upload';
+  $command = 'curl -s --data-binary @' . $local_data_file_path . '/' . $size . 'mb.dat ' . $test_server_url . '/index.html';
+  if (!$quiet) {
+    printf("Uploading %s MB...\n", $size);
+  }
+}
+
+$start = microtime(TRUE);
+$out = `$command`;
+$end = microtime(TRUE);
+
+$time = $end - $start;
+$speed = $size / $time * 8;
+if ($speed > 1) {
+  $speed_text = number_format($speed, 1);
+  $units = 'mbps';
+}
+else {
+  $speed_text = number_format($speed * 1000, 0);
+  $units = 'kbps';
+}
+
+if ($quiet) {
+  printf("%s %s\n", $speed_text, $units);
+}
+else {
+  printf("%s: %s %s (%s MB in %s sec)\n", $direction_text, $speed_text, $units, $size, number_format($time, 1));
+}
+
+if ($csv) {
+  if ($fp = fopen($csv_path, 'a')) {
+    fputcsv($fp, [date('Y-m-d H:i:s'), $direction, number_format($speed, 3), $size]);
+    fclose($fp);
+  }
+}
+
+function has_arg(&$args, $arg) {
+  if (in_array($arg, $args)) {
+    unset($args[array_search($arg, $args)]);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+function show_graphs($csv_path, $directions =  ['up', 'down']) {
+  $graph_width = 50;
+  $graph_max_value = [
+    'up' => 5,
+    'down' => 50,
+  ];
+  $maxmin = [
+    'up' => [
+      'max' => -1,
+      'min' => 999999999,
+    ],
+    'down' => [
+      'max' => -1,
+      'min' => 999999999,
+    ],
+  ];
+  $data = [];
+  foreach ($directions as $direction) {
+    $command = 'tail -n 1000 ' . $csv_path . ' | grep ' . $direction . ' | tail -n 100 ';
+    $out = `$command`;
+    $lines = explode("\n", trim($out));
+    foreach ($lines as $line) {
+      $line = str_getcsv(trim($line));
+      $point = [
+        'date' => $line[0] ?? NULL,
+        'direction' => $line[1] ?? NULL,
+        'speed' => $line[2] ?? NULL,
+        'size' => $line[3] ?? NULL,
+        'above_max' => FALSE,
+      ];
+      if (empty($graph_max_value[$point['direction']])) {
+        continue;
+      }
+//      $point['speed'] = '100.000';
+      if ($point['speed'] > $graph_max_value[$point['direction']]) {
+        $point['graph_speed'] = $graph_max_value[$point['direction']];
+        $point['above_max'] = TRUE;
+      }
+      else {
+        $point['graph_speed'] = $point['speed'];
+      }
+
+      if ($point['speed'] > $maxmin[$direction]['max']) {
+        $maxmin[$direction]['max'] = $point['speed'];
+      }
+      if ($point['speed'] < $maxmin[$direction]['min']) {
+        $maxmin[$direction]['min'] = $point['speed'];
+      }
+
+      $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
+      $key = $point['date'] . '|' . $point['direction'];
+      $data[$key] = $point;
+    }
+  }
+
+  ksort($data);
+
+  $row = 0;
+  $num_rows = count($data);
+
+  print "+---------------------+-----------------------------------------------------+-------------+\n";
+  print "|                     |           1         2         3         4         5 |   Speed     |\n";
+  print "| Time                | 0         0         0         0         0         0 |   (mbps)    |\n";
+  print "+---------------------+-----------------------------------------------------+-------------+\n";
+  foreach ($data as $point) {
+    $row++;
+    $marker = ($point['direction'] == 'up') ? '⭕' : '🔴'; // 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
+    $min_indicator = ($point['speed'] == $maxmin[$point['direction']]['min']) ? 'o' : '';
+    $max_indicator = ($point['speed'] == $maxmin[$point['direction']]['max']) ? 'X' : '';
+    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
+    print '| ' . $point['date'] . ' | ';
+    print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . '|';
+//    print str_pad($point['direction'], 9, ' ', STR_PAD_RIGHT). ' | ';
+    print (($point['direction'] == 'up') ? '🔺' : '🔻') . str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '|';
+    print "\n";
+    if (!($row % 10) && $row < $num_rows) {
+      print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +-------------+\n";
+    }
+  }
+  print "+---------------------+-----------------------------------------------------+-------------+\n";
+
+}
