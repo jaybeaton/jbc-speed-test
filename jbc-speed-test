@@ -220,7 +220,6 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
     print "\n";
   }
   print "+-----------------+---------+---------+---------+---------+-------+\n";
-  print "\n";
 
 }
 
