@@ -124,38 +124,42 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
     'down' => 50,
   ];
   $data = [];
-  foreach ($directions as $direction) {
-    $command = 'tac ' . $csv_path . ' | grep -m ' . $num_rows . ' ' . $direction;
-    $out = `$command`;
-    $lines = explode("\n", trim($out));
-    foreach ($lines as $line) {
-      $line = str_getcsv(trim($line));
-      $point = [
-        'date' => $line[0] ?? NULL,
-        'direction' => $line[1] ?? NULL,
-        'speed' => $line[2] ?? NULL,
-        'size' => $line[3] ?? NULL,
-        'ping' => $line[4] ?? NULL,
-        'above_max' => FALSE,
-      ];
-      if (empty($graph_max_value[$point['direction']])) {
-        continue;
-      }
-//      $point['speed'] = '100.000';
-      if ($point['speed'] > $graph_max_value[$point['direction']]) {
-        $point['graph_speed'] = $graph_max_value[$point['direction']];
-        $point['above_max'] = TRUE;
-      }
-      else {
-        $point['graph_speed'] = $point['speed'];
-      }
-
-      $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
-      $key = $point['date'] . '|' . $point['direction'];
-      $data[$key] = $point;
-
-    }
+  if (count($directions) > 1) {
+    $command = 'tail -n ' . $num_rows . ' ' . $csv_path;
   }
+  else {
+    $command = 'tac ' . $csv_path . ' | grep -m ' . $num_rows . ' ' . $directions[0];
+  }
+  $out = `$command`;
+  $lines = explode("\n", trim($out));
+
+  foreach ($lines as $line) {
+
+    $line = str_getcsv(trim($line));
+    $point = [
+      'date' => $line[0] ?? NULL,
+      'direction' => $line[1] ?? NULL,
+      'speed' => $line[2] ?? NULL,
+      'size' => $line[3] ?? NULL,
+      'ping' => $line[4] ?? NULL,
+      'above_max' => FALSE,
+    ];
+    if (empty($graph_max_value[$point['direction']])) {
+      continue;
+    }
+    if ($point['speed'] > $graph_max_value[$point['direction']]) {
+      $point['graph_speed'] = $graph_max_value[$point['direction']];
+      $point['above_max'] = TRUE;
+    }
+    else {
+      $point['graph_speed'] = $point['speed'];
+    }
+
+    $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
+    $key = $point['date'] . '|' . $point['direction'];
+    $data[$key] = $point;
+
+  } // Loop thru lines.
 
   ksort($data);
 
