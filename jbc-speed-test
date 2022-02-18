@@ -117,30 +117,6 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
     'up' => 5,
     'down' => 50,
   ];
-  $maxmin = [
-    'up' => [
-      'max' => -1,
-      'min' => 999999999,
-    ],
-    'down' => [
-      'max' => -1,
-      'min' => 999999999,
-    ],
-    'ping' => [
-      'max' => -1,
-      'min' => 999999999,
-    ],
-  ];
-  $sums = [
-    'up' => 0,
-    'down' => 0,
-    'ping' => 0,
-  ];
-  $counts = [
-    'up' => 0,
-    'down' => 0,
-    'ping' => 0,
-  ];
   $data = [];
   foreach ($directions as $direction) {
     $command = 'tac ' . $csv_path . ' | grep -m 50 ' . $direction;
@@ -168,33 +144,9 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
         $point['graph_speed'] = $point['speed'];
       }
 
-      if ($point['speed'] > $maxmin[$direction]['max']) {
-        $maxmin[$direction]['max'] = $point['speed'];
-      }
-      if ($point['speed'] < $maxmin[$direction]['min']) {
-        $maxmin[$direction]['min'] = $point['speed'];
-      }
-
-      if (!is_null($point['ping'])) {
-        if ($point['ping'] > $maxmin['ping']['max']) {
-          $maxmin['ping']['max'] = $point['ping'];
-        }
-        if ($point['ping'] < $maxmin['ping']['min']) {
-          $maxmin['ping']['min'] = $point['ping'];
-        }
-      }
-
       $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
       $key = $point['date'] . '|' . $point['direction'];
       $data[$key] = $point;
-
-      $sums[$direction] += $point['speed'];
-      $counts[$direction]++;
-
-      if (!is_null($point['ping'])) {
-        $sums['ping'] += $point['ping'];
-        $counts['ping']++;
-      }
 
     }
   }
@@ -204,6 +156,11 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   $row = 0;
   $num_rows = count($data);
 
+  $stats = [];
+  foreach (array_merge($directions, ['ping']) as $key) {
+    $stats[$key] = get_stats($data, $key);
+  }
+
   print "+---------------------+-----------------------------------------------------+-------------+------+\n";
   print "|                     |           1         2         3         4         5 |     Speed   | Ping |\n";
   print "| Time                | 0         0         0         0         0         0 |    (mbps)   | (ms) |\n";
@@ -211,8 +168,8 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   foreach ($data as $point) {
     $row++;
     $marker = ($point['direction'] == 'up') ? '⭕' : '🔴'; // 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
-    $min_indicator = ($point['speed'] == $maxmin[$point['direction']]['min']) ? 'o' : '';
-    $max_indicator = ($point['speed'] == $maxmin[$point['direction']]['max']) ? 'X' : '';
+    $min_indicator = ($point['speed'] == $stats[$point['direction']]['min']) ? 'o' : '';
+    $max_indicator = ($point['speed'] == $stats[$point['direction']]['max']) ? 'X' : '';
     $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
     print '| ' . $point['date'] . ' | ';
     print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . '|';
@@ -232,26 +189,24 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   print "| Action          |    Mean |  Median |     Max |     Min | Count |\n";
   print "+-----------------+---------+---------+---------+---------+-------+\n";
   foreach ($directions as $key) {
-    $stats = get_stats($data, $key);
-    if ($stats['count'] > 0) {
+    if ($stats[$key]['count'] > 0) {
       print '| ' . str_pad(ucfirst($key . 'load (mbps)'), 15) . ' | ';
-      print str_pad(number_format($stats['mean'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
-      print str_pad(number_format($stats['median'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
-      print str_pad(number_format($stats['max'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
-      print str_pad(number_format($stats['min'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
-      print str_pad($stats['count'], 5, ' ', STR_PAD_LEFT) . ' | ';
+      print str_pad(number_format($stats[$key]['mean'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
+      print str_pad(number_format($stats[$key]['median'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
+      print str_pad(number_format($stats[$key]['max'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
+      print str_pad(number_format($stats[$key]['min'], 3), 7, ' ', STR_PAD_LEFT) . ' | ';
+      print str_pad($stats[$key]['count'], 5, ' ', STR_PAD_LEFT) . ' | ';
       print "\n";
     }
   }
   $key = 'ping';
-  $stats = get_stats($data, $key);
-  if ($stats['count'] > 0) {
+  if ($stats[$key]['count'] > 0) {
     print '| Ping (ms)       | ';
-    print str_pad(number_format($stats['mean']), 7, ' ', STR_PAD_LEFT) . ' | ';
-    print str_pad(number_format($stats['median']), 7, ' ', STR_PAD_LEFT) . ' | ';
-    print str_pad(number_format($stats['max']), 7, ' ', STR_PAD_LEFT) . ' | ';
-    print str_pad(number_format($stats['min']), 7, ' ', STR_PAD_LEFT) . ' | ';
-    print str_pad($stats['count'], 5, ' ', STR_PAD_LEFT) . ' | ';
+    print str_pad(number_format($stats[$key]['mean']), 7, ' ', STR_PAD_LEFT) . ' | ';
+    print str_pad(number_format($stats[$key]['median']), 7, ' ', STR_PAD_LEFT) . ' | ';
+    print str_pad(number_format($stats[$key]['max']), 7, ' ', STR_PAD_LEFT) . ' | ';
+    print str_pad(number_format($stats[$key]['min']), 7, ' ', STR_PAD_LEFT) . ' | ';
+    print str_pad($stats[$key]['count'], 5, ' ', STR_PAD_LEFT) . ' | ';
     print "\n";
   }
   print "+-----------------+---------+---------+---------+---------+-------+\n";
