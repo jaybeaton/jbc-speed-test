@@ -129,7 +129,7 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   ];
   $data = [];
   foreach ($directions as $direction) {
-    $command = 'tail -n 1000 ' . $csv_path . ' | grep ' . $direction . ' | tail -n 50 ';
+    $command = 'tac ' . $csv_path . ' | grep -m 50 ' . $direction;
     $out = `$command`;
     $lines = explode("\n", trim($out));
     foreach ($lines as $line) {
