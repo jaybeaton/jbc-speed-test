@@ -74,6 +74,9 @@ $start = microtime(TRUE);
 $out = `$command`;
 $end = microtime(TRUE);
 
+$command = "ping {$ping_destination_host} -c 1 | grep -E -o 'time=[0-9.]+' | cut -f2 -d'='";
+$ping = number_format(trim(`$command`));
+
 $time = $end - $start;
 $speed = $size / $time * 8;
 if ($speed > 1) {
@@ -86,15 +89,16 @@ else {
 }
 
 if ($quiet) {
-  printf("%s %s\n", $speed_text, $units);
+  printf("%s %s (%s ms)\n", $speed_text, $units, $ping);
 }
 else {
   printf("%s: %s %s (%s MB in %s sec)\n", $direction_text, $speed_text, $units, $size, number_format($time, 1));
+  printf("Ping: %s ms\n", $ping);
 }
 
 if ($csv) {
   if ($fp = fopen($csv_path, 'a')) {
-    fputcsv($fp, [date('Y-m-d H:i:s'), $direction, number_format($speed, 3), $size]);
+    fputcsv($fp, [date('Y-m-d H:i:s'), $direction, number_format($speed, 3), $size, $ping]);
     fclose($fp);
   }
 }
@@ -125,7 +129,7 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   ];
   $data = [];
   foreach ($directions as $direction) {
-    $command = 'tail -n 1000 ' . $csv_path . ' | grep ' . $direction . ' | tail -n 100 ';
+    $command = 'tail -n 1000 ' . $csv_path . ' | grep ' . $direction . ' | tail -n 50 ';
     $out = `$command`;
     $lines = explode("\n", trim($out));
     foreach ($lines as $line) {
@@ -135,6 +139,7 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
         'direction' => $line[1] ?? NULL,
         'speed' => $line[2] ?? NULL,
         'size' => $line[3] ?? NULL,
+        'ping' => $line[4] ?? NULL,
         'above_max' => FALSE,
       ];
       if (empty($graph_max_value[$point['direction']])) {
@@ -167,10 +172,10 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   $row = 0;
   $num_rows = count($data);
 
-  print "+---------------------+-----------------------------------------------------+-------------+\n";
-  print "|                     |           1         2         3         4         5 |   Speed     |\n";
-  print "| Time                | 0         0         0         0         0         0 |   (mbps)    |\n";
-  print "+---------------------+-----------------------------------------------------+-------------+\n";
+  print "+---------------------+-----------------------------------------------------+-------------+------+\n";
+  print "|                     |           1         2         3         4         5 |     Speed   | Ping |\n";
+  print "| Time                | 0         0         0         0         0         0 |    (mbps)   | (ms) |\n";
+  print "+---------------------+-----------------------------------------------------+-------------+------+\n";
   foreach ($data as $point) {
     $row++;
     $marker = ($point['direction'] == 'up') ? '⭕' : '🔴'; // 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
@@ -180,12 +185,13 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
     print '| ' . $point['date'] . ' | ';
     print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . '|';
 //    print str_pad($point['direction'], 9, ' ', STR_PAD_RIGHT). ' | ';
-    print (($point['direction'] == 'up') ? '🔺' : '🔻') . str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '|';
+    print (($point['direction'] == 'up') ? '🔺' : '🔻') . str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '| ';
+    print str_pad($point['ping'], 4, ' ', STR_PAD_LEFT) . ' |';
     print "\n";
     if (!($row % 10) && $row < $num_rows) {
-      print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +-------------+\n";
+      print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +-------------+------+\n";
     }
   }
-  print "+---------------------+-----------------------------------------------------+-------------+\n";
+  print "+---------------------+-----------------------------------------------------+-------------+------+\n";
 
 }

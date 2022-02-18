@@ -13,6 +13,9 @@ $test_server_url = 'http://www.example.com/file/path';
 // Local path where data files are stored (for upload tests).
 $local_data_file_path = '/path/to/data/files';
 
+// Host to ping.
+$ping_destination_host = '8.8.8.8';
+
 /**
  * Create data files by running these commands:
  *
