@@ -23,7 +23,13 @@ if (has_arg($args, 'out')) {
   if (!$directions) {
     $directions = ['up', 'down'];
   }
-  show_graphs($csv_path, $directions);
+  $args = array_values($args);
+  $num_rows = $args[0] ?? 0;
+  $num_rows = intval($num_rows);
+  if ($num_rows < 1) {
+    $num_rows = 50;
+  }
+  show_graphs($csv_path, $directions, $num_rows);
   die();
 }
 
@@ -111,7 +117,7 @@ function has_arg(&$args, $arg) {
   return FALSE;
 }
 
-function show_graphs($csv_path, $directions =  ['up', 'down']) {
+function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
   $graph_width = 50;
   $graph_max_value = [
     'up' => 5,
@@ -119,7 +125,7 @@ function show_graphs($csv_path, $directions =  ['up', 'down']) {
   ];
   $data = [];
   foreach ($directions as $direction) {
-    $command = 'tac ' . $csv_path . ' | grep -m 50 ' . $direction;
+    $command = 'tac ' . $csv_path . ' | grep -m ' . $num_rows . ' ' . $direction;
     $out = `$command`;
     $lines = explode("\n", trim($out));
     foreach ($lines as $line) {
