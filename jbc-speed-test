@@ -4,6 +4,12 @@
 const INDICATOR_MIN = '-';
 const INDICATOR_MAX = '+';
 
+// 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
+const POINT_MARKER_UP = '⭕';
+const POINT_MARKER_DOWN = '🔴';
+const DIRECTION_MARKER_UP = '🔺';
+const DIRECTION_MARKER_DOWN = '🔻';
+
 // Include settings file.
 require(__DIR__  . '/settings.php');
 if (empty($test_server_url)) {
@@ -180,14 +186,14 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
   print "+---------------------+-----------------------------------------------------+-------------+--------+\n";
   foreach ($data as $point) {
     $row++;
-    $marker = ($point['direction'] == 'up') ? '⭕' : '🔴'; // 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
+    $marker = ($point['direction'] == 'up') ? POINT_MARKER_UP : POINT_MARKER_DOWN;
     $min_indicator = ($point['speed'] == $stats[$point['direction']]['min']) ? INDICATOR_MIN : '';
     $max_indicator = ($point['speed'] == $stats[$point['direction']]['max']) ? INDICATOR_MAX : '';
     $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
     print '| ' . $point['date'] . ' | ';
     print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . '|';
 //    print str_pad($point['direction'], 9, ' ', STR_PAD_RIGHT). ' | ';
-    print (($point['direction'] == 'up') ? '🔺' : '🔻') . str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '| ';
+    print (($point['direction'] == 'up') ? DIRECTION_MARKER_UP : DIRECTION_MARKER_DOWN) . str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '| ';
     $min_indicator = ($point['ping'] == $stats['ping']['min']) ? INDICATOR_MIN : '';
     $max_indicator = ($point['ping'] == $stats['ping']['max']) ? INDICATOR_MAX : '';
     $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
