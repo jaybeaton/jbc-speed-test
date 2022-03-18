@@ -17,6 +17,7 @@ if (empty($test_server_url)) {
 
 $quiet = FALSE;
 $csv = TRUE;
+$isp = NULL;
 $args = $argv;
 unset($args[0]);
 
@@ -91,11 +92,12 @@ $end = microtime(TRUE);
 $command = "ping {$ping_destination_host} -c 1 | grep -E -o 'time=[0-9.]+' | cut -f2 -d'='";
 $ping = number_format(trim(`$command`), 0, '.', '');
 
-if (!empty($isp_lookup_host)) {
-  if ($
-
+if (!empty($isp_lookup_url)) {
+  if ($info = file_get_contents($isp_lookup_url)) {
+    $data = json_decode($info);
+    $isp = $data->isp ?? NULL;
+  }
 }
-
 
 $time = $end - $start;
 $speed = $size / $time * 8;
@@ -114,11 +116,14 @@ if ($quiet) {
 else {
   printf("%s: %s %s (%s MB in %s sec)\n", $direction_text, $speed_text, $units, $size, number_format($time, 1));
   printf("Ping: %s ms\n", $ping);
+  if ($isp) {
+    printf("ISP: %s\n", $isp);
+  }
 }
 
 if ($csv) {
   if ($fp = fopen($csv_path, 'a')) {
-    fputcsv($fp, [date('Y-m-d H:i:s'), $direction, number_format($speed, 3), $size, $ping]);
+    fputcsv($fp, [date('Y-m-d H:i:s'), $direction, number_format($speed, 3), $size, $ping, $isp]);
     fclose($fp);
   }
 }

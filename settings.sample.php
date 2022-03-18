@@ -16,6 +16,9 @@ $local_data_file_path = '/path/to/data/files';
 // Host to ping.
 $ping_destination_host = '8.8.8.8';
 
+// URL used to lookup ISP info.
+$isp_lookup_url = '';
+
 /**
  * Create data files by running these commands:
  *
