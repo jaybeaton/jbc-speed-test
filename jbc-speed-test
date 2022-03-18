@@ -1,14 +1,13 @@
 #!/usr/bin/php
 <?php
 
-const INDICATOR_MIN = '-';
-const INDICATOR_MAX = '+';
+const POINT_MARKER_UP = "\e[1;35m●\e[0m";
+const DIRECTION_MARKER_UP = "\e[1;35m↑\e[0m";
+const POINT_MARKER_DOWN = "\e[1;36m●\e[0m";
+const DIRECTION_MARKER_DOWN = "\e[1;36m↓\e[0m";
 
-// 🔻🔺🔴⭕🔵⏫⬆🔼⬇⏬🔼 🔴 🟠 🟡 🟢 🔵 🟣 ⬆️ ⬇️ ↗️
-const POINT_MARKER_UP = '⭕';
-const POINT_MARKER_DOWN = '🔴';
-const DIRECTION_MARKER_UP = '🔺';
-const DIRECTION_MARKER_DOWN = '🔻';
+const INDICATOR_MIN = "\e[1;33m-\e[0m";
+const INDICATOR_MAX = "\e[1;32m+\e[0m";
 
 // Include settings file.
 require(__DIR__  . '/settings.php');
@@ -90,7 +89,13 @@ $out = `$command`;
 $end = microtime(TRUE);
 
 $command = "ping {$ping_destination_host} -c 1 | grep -E -o 'time=[0-9.]+' | cut -f2 -d'='";
-$ping = number_format(trim(`$command`));
+$ping = number_format(trim(`$command`), 0, '.', '');
+
+if (!empty($isp_lookup_host)) {
+  if ($
+
+}
+
 
 $time = $end - $start;
 $speed = $size / $time * 8;
@@ -189,14 +194,14 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
     $marker = ($point['direction'] == 'up') ? POINT_MARKER_UP : POINT_MARKER_DOWN;
     $min_indicator = ($point['speed'] == $stats[$point['direction']]['min']) ? INDICATOR_MIN : '';
     $max_indicator = ($point['speed'] == $stats[$point['direction']]['max']) ? INDICATOR_MAX : '';
-    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
+    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
     print '| ' . $point['date'] . ' | ';
-    print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . '|';
-    print str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . (($point['direction'] == 'up') ? DIRECTION_MARKER_UP : DIRECTION_MARKER_DOWN) . $maxmin_indicator . '| ';
+    print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . ' |';
+    print str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . (($point['direction'] == 'up') ? DIRECTION_MARKER_UP : DIRECTION_MARKER_DOWN) . ' ' . $maxmin_indicator . ' | ';
     $min_indicator = ($point['ping'] == $stats['ping']['min']) ? INDICATOR_MIN : '';
     $max_indicator = ($point['ping'] == $stats['ping']['max']) ? INDICATOR_MAX : '';
-    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 2, ' ');
-    print str_pad($point['ping'], 4, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . '|';
+    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
+    print str_pad($point['ping'], 4, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . ' |';
     print "\n";
     if (!($row % 10) && $row < $num_rows) {
       print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +------------+--------+\n";
