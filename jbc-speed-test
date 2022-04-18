@@ -8,6 +8,7 @@ const DIRECTION_MARKER_DOWN = "\e[1;36m↓\e[0m";
 
 const INDICATOR_MIN = "\e[1;33m-\e[0m";
 const INDICATOR_MAX = "\e[1;32m+\e[0m";
+const UNKNOWN_VALUE = '??';
 
 // Include settings file.
 require(__DIR__  . '/settings.php');
@@ -94,7 +95,12 @@ $out = `$command`;
 $end = microtime(TRUE);
 
 $command = "ping {$ping_destination_host} -c 1 | grep -E -o 'time=[0-9.]+' | cut -f2 -d'='";
-$ping = number_format(trim(`$command`), 0, '.', '');
+if ($ping = trim(`$command`)) {
+  $ping = number_format(trim(`$command`), 0, '.', '');
+}
+else {
+  $ping = UNKNOWN_VALUE;
+}
 
 if (!empty($isp_lookup_url)) {
   if ($info = file_get_contents($isp_lookup_url)) {
@@ -179,6 +185,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
       $point['graph_speed'] = $point['speed'];
     }
     $point['time_period'] = get_time_period($point['date']);
+    $point['ping'] = ($point['ping']) ?: UNKNOWN_VALUE;
     $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
     $key = $point['date'] . '|' . $point['direction'];
     $data[$key] = $point;
@@ -268,6 +275,7 @@ function get_stats($data, $key) {
 
   foreach ($data as $point) {
     if (is_null($point[$index])
+      || $point[$index] == UNKNOWN_VALUE
       || ($index == 'speed' && $point['direction'] != $key)) {
       continue;
     }
