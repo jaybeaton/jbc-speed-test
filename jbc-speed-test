@@ -20,6 +20,8 @@ $quiet = FALSE;
 $csv = TRUE;
 $isp = NULL;
 $time_period = NULL;
+$start_date = NULL;
+$end_date = NULL;
 $args = $argv;
 unset($args[0]);
 
@@ -51,7 +53,9 @@ if (has_arg($args, 'out')) {
         die("Invalid time period.\n");
     }
   }
-  show_graphs($csv_path, $directions, $num_rows, $time_period);
+  $start_date = has_arg($args, '--start');
+  $end_date = has_arg($args, '--end');
+  show_graphs($csv_path, $directions, $num_rows, $time_period, $start_date, $end_date);
   die();
 }
 
@@ -167,7 +171,11 @@ function has_arg(&$args, $arg) {
   return FALSE;
 }
 
-function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $time_period = NULL) {
+function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $time_period = NULL, $start_date = NULL, $end_date = NULL) {
+
+  if ($start_date || $end_date) {
+    $num_rows = 1000000;
+  }
 
   $graph_width = 50;
   $graph_max_value = [
@@ -216,15 +224,27 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $t
     if ($time_period && $time_period != $point['time_period']) {
       continue;
     }
+    if ($start_date && $point['day'] < $start_date) {
+      continue;
+    }
+    if ($end_date && $point['day'] > $end_date) {
+      continue;
+    }
 
     $data[$key] = $point;
 
   } // Loop thru lines.
 
+  if (!$data) {
+    die("No data found.\n");
+  }
+
   ksort($data);
 
   $row = 0;
   $num_rows = count($data);
+  $first = array_values($data)[0]['date'];
+  $last = array_values($data)[($num_rows - 1)]['date'];
 
   $stats = [];
   foreach (array_merge($directions, ['ping']) as $key) {
@@ -257,6 +277,11 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $t
 
   print "\n";
   print "== Summary ==\n";
+  print $first . ' - ' . $last;
+  if ($time_period) {
+    print " ({$time_period})";
+  }
+  print "\n";
   print "+-----------------+---------+---------+---------+---------+---------+-------+\n";
   print "| Action          |    Mean |  Median | Std Dev |     Max |     Min | Count |\n";
   print "+-----------------+---------+---------+---------+---------+---------+-------+\n";
