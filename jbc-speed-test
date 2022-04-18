@@ -55,7 +55,7 @@ if (has_arg($args, 'out')) {
   }
   $start_date = has_arg($args, '--start');
   $end_date = has_arg($args, '--end');
-  show_graphs($csv_path, $directions, $num_rows, $time_period, $start_date, $end_date);
+  show_graphs($csv_path, $directions, $num_rows, $time_period, $start_date, $end_date, has_arg($args, 'summary'));
   die();
 }
 
@@ -171,7 +171,7 @@ function has_arg(&$args, $arg) {
   return FALSE;
 }
 
-function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $time_period = NULL, $start_date = NULL, $end_date = NULL) {
+function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $time_period = NULL, $start_date = NULL, $end_date = NULL, $summary_only = FALSE) {
 
   if ($start_date || $end_date) {
     $num_rows = 1000000;
@@ -251,31 +251,33 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $t
     $stats[$key] = get_stats($data, $key, $time_period);
   }
 
-  print "+---------------------+-----------------------------------------------------+------------+--------+\n";
-  print "|                     |           1         2         3         4         5 |   Speed    | Ping   |\n";
-  print "| Time                | 0         0         0         0         0         0 |  (mbps)    | (ms)   |\n";
-  print "+---------------------+-----------------------------------------------------+------------+--------+\n";
-  foreach ($data as $point) {
-    $row++;
-    $marker = ($point['direction'] == 'up') ? POINT_MARKER_UP : POINT_MARKER_DOWN;
-    $max_indicator = ($point['speed'] == $stats[$point['direction']]['max']) ? INDICATOR_MAX : '';
-    $min_indicator = (!$max_indicator && $point['speed'] == $stats[$point['direction']]['min']) ? INDICATOR_MIN : '';
-    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
-    print '| ' . $point['date'] . ' | ';
-    print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . ' |';
-    print str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . (($point['direction'] == 'up') ? DIRECTION_MARKER_UP : DIRECTION_MARKER_DOWN) . ' ' . $maxmin_indicator . ' | ';
-    $max_indicator = ($point['ping'] == $stats['ping']['max']) ? INDICATOR_MAX : '';
-    $min_indicator = (!$max_indicator && $point['ping'] == $stats['ping']['min']) ? INDICATOR_MIN : '';
-    $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
-    print str_pad($point['ping'], 4, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . ' |';
-    print "\n";
-    if (!($row % 10) && $row < $num_rows) {
-      print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +------------+--------+\n";
+  if (!$summary_only) {
+    print "+---------------------+-----------------------------------------------------+------------+--------+\n";
+    print "|                     |           1         2         3         4         5 |   Speed    | Ping   |\n";
+    print "| Time                | 0         0         0         0         0         0 |  (mbps)    | (ms)   |\n";
+    print "+---------------------+-----------------------------------------------------+------------+--------+\n";
+    foreach ($data as $point) {
+      $row++;
+      $marker = ($point['direction'] == 'up') ? POINT_MARKER_UP : POINT_MARKER_DOWN;
+      $max_indicator = ($point['speed'] == $stats[$point['direction']]['max']) ? INDICATOR_MAX : '';
+      $min_indicator = (!$max_indicator && $point['speed'] == $stats[$point['direction']]['min']) ? INDICATOR_MIN : '';
+      $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
+      print '| ' . $point['date'] . ' | ';
+      print str_repeat(' ', $point['graph']) . $marker . str_repeat(' ', $graph_width - $point['graph']) . ' |';
+      print str_pad($point['speed'], 8, ' ', STR_PAD_LEFT) . (($point['direction'] == 'up') ? DIRECTION_MARKER_UP : DIRECTION_MARKER_DOWN) . ' ' . $maxmin_indicator . ' | ';
+      $max_indicator = ($point['ping'] == $stats['ping']['max']) ? INDICATOR_MAX : '';
+      $min_indicator = (!$max_indicator && $point['ping'] == $stats['ping']['min']) ? INDICATOR_MIN : '';
+      $maxmin_indicator = str_pad($min_indicator . $max_indicator, 1, ' ');
+      print str_pad($point['ping'], 4, ' ', STR_PAD_LEFT) . ' ' . $maxmin_indicator . ' |';
+      print "\n";
+      if (!($row % 10) && $row < $num_rows) {
+        print "+---------------------+ 0 ------- 1 ------- 2 ------- 3 ------- 4 ------- 5 +------------+--------+\n";
+      }
     }
+    print "+---------------------+-----------------------------------------------------+------------+--------+\n";
+    print "\n";
   }
-  print "+---------------------+-----------------------------------------------------+------------+--------+\n";
 
-  print "\n";
   print "== Summary ==\n";
   print $first . ' - ' . $last;
   if ($time_period) {
