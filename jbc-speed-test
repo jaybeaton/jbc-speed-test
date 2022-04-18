@@ -165,6 +165,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
       'speed' => $line[2] ?? NULL,
       'size' => $line[3] ?? NULL,
       'ping' => $line[4] ?? NULL,
+      'time_period' => NULL,
       'above_max' => FALSE,
     ];
     if (empty($graph_max_value[$point['direction']])) {
@@ -177,7 +178,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
     else {
       $point['graph_speed'] = $point['speed'];
     }
-
+    $point['time_period'] = get_time_period($point['date']);
     $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
     $key = $point['date'] . '|' . $point['direction'];
     $data[$key] = $point;
@@ -311,4 +312,26 @@ function get_stats($data, $key) {
     'min' => $min,
   ];
 
+}
+
+/**
+ * 1 am - 9am - Early
+ * 9 am - 5pm - Day
+ * 5 pm - 1am - Late
+ */
+function get_time_period($date) {
+   if (!preg_match('/ (\d{2}):/', $date, $matches)) {
+     return '';
+   }
+   $hour = intval($matches[1]);
+   if ($hour < 1 || $hour > 16) {
+     $period = 'late';
+   }
+   elseif ($hour > 8) {
+     $period = 'day';
+   }
+   else {
+     $period = 'early';
+   }
+   return $period;
 }
