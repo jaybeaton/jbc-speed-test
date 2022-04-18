@@ -187,7 +187,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $t
     $command = 'tail -n ' . $num_rows . ' ' . $csv_path;
   }
   else {
-    $command = 'tac ' . $csv_path . ' | grep -m ' . $num_rows . ' ' . $directions[0];
+    $command = 'tac ' . $csv_path . ' 2> /dev/null | grep -m ' . $num_rows . ' ' . $directions[0];
   }
   $out = `$command`;
   $lines = explode("\n", trim($out));
