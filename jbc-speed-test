@@ -19,6 +19,7 @@ if (empty($test_server_url)) {
 $quiet = FALSE;
 $csv = TRUE;
 $isp = NULL;
+$time_period = NULL;
 $args = $argv;
 unset($args[0]);
 
@@ -39,7 +40,18 @@ if (has_arg($args, 'out')) {
   if ($num_rows < 1) {
     $num_rows = 50;
   }
-  show_graphs($csv_path, $directions, $num_rows);
+  if ($time_period = has_arg($args, '--period')) {
+    switch ($time_period) {
+      case 'early':
+      case 'day':
+      case 'late':
+         // Valid value.
+        break;
+      default:
+        die("Invalid time period.\n");
+    }
+  }
+  show_graphs($csv_path, $directions, $num_rows, $time_period);
   die();
 }
 
@@ -143,10 +155,20 @@ function has_arg(&$args, $arg) {
     unset($args[array_search($arg, $args)]);
     return TRUE;
   }
+  if (strpos($arg, '--') === 0) {
+    foreach ($args as $a) {
+      if (strpos($a, $arg . '=') === 0) {
+        $parts = explode('=', $a);
+        unset($args[array_search($arg, $args)]);
+        return $parts[1];
+      }
+    } // Loop thru args.
+  }
   return FALSE;
 }
 
-function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
+function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50, $time_period = NULL) {
+
   $graph_width = 50;
   $graph_max_value = [
     'up' => 5,
@@ -171,6 +193,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
       'speed' => $line[2] ?? NULL,
       'size' => $line[3] ?? NULL,
       'ping' => $line[4] ?? NULL,
+      'day' => NULL,
       'time_period' => NULL,
       'above_max' => FALSE,
     ];
@@ -184,10 +207,16 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
     else {
       $point['graph_speed'] = $point['speed'];
     }
+    $point['day'] = explode(' ', $point['date'])[0];
     $point['time_period'] = get_time_period($point['date']);
     $point['ping'] = ($point['ping']) ?: UNKNOWN_VALUE;
     $point['graph'] = round(($point['graph_speed'] / $graph_max_value[$point['direction']]) * $graph_width);
     $key = $point['date'] . '|' . $point['direction'];
+
+    if ($time_period && $time_period != $point['time_period']) {
+      continue;
+    }
+
     $data[$key] = $point;
 
   } // Loop thru lines.
@@ -199,7 +228,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
 
   $stats = [];
   foreach (array_merge($directions, ['ping']) as $key) {
-    $stats[$key] = get_stats($data, $key);
+    $stats[$key] = get_stats($data, $key, $time_period);
   }
 
   print "+---------------------+-----------------------------------------------------+------------+--------+\n";
@@ -258,7 +287,7 @@ function show_graphs($csv_path, $directions = ['up', 'down'], $num_rows = 50) {
 
 }
 
-function get_stats($data, $key) {
+function get_stats($data, $key, $time_period = NULL) {
 
   if ($key == 'up' || $key == 'down') {
     $index = 'speed';
@@ -277,6 +306,9 @@ function get_stats($data, $key) {
     if (is_null($point[$index])
       || $point[$index] == UNKNOWN_VALUE
       || ($index == 'speed' && $point['direction'] != $key)) {
+      continue;
+    }
+    if ($time_period && $time_period != $point['time_period']) {
       continue;
     }
     $count++;
