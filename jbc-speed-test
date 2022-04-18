@@ -78,8 +78,12 @@ if ($direction == 'down') {
   }
 }
 else {
+  $filename = $local_data_file_path . '/' . $size . 'mb.dat';
+  if (!file_exists($filename)) {
+    die(printf("Upload file (%s) missing.\n", $filename));
+  }
   $direction_text = 'Upload';
-  $command = 'curl -s --data-binary @' . $local_data_file_path . '/' . $size . 'mb.dat ' . $test_server_url . '/index.html';
+  $command = 'curl -s --data-binary @' .$filename . ' ' . $test_server_url . '/index.html';
   if (!$quiet) {
     printf("Uploading %s MB...\n", $size);
   }
